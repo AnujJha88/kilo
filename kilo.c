@@ -5,12 +5,13 @@
 #include<stdio.h>
 #include<ctype.h>
 
-
+/// DEFINES
 #define CTRL_KEY(k) ((k)&(0x1f))
 
-
+/// DATA
 struct termios orig;
 
+///TERMINAL
 void die(const char* s){
     perror(s);
     exit(1);
@@ -46,6 +47,12 @@ char editorReadKey(){
     return c;
 }
 
+///OUTPUT
+
+void editorRefresh(){
+    write(STDOUT_FILENO,"\x1b[2J",4);
+}
+/// INPUT
 void editorProcessKey(){
     char c=editorReadKey();
     switch(c){
@@ -60,6 +67,7 @@ int main(){
     enableRawMode();
 
     while(1){
+        editorRefresh();
         editorProcessKey();
     }
 
