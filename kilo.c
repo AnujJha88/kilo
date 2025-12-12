@@ -13,6 +13,9 @@ struct termios orig;
 
 ///TERMINAL
 void die(const char* s){
+    write(STDOUT_FILENO,"\x1b[2J",4);
+    write(STDOUT_FILENO,"\x1b[H",3);
+
     perror(s);
     exit(1);
 }
@@ -49,14 +52,30 @@ char editorReadKey(){
 
 ///OUTPUT
 
-void editorRefresh(){
-    write(STDOUT_FILENO,"\x1b[2J",4);
+
+
+void editorDrawRows(){
+    int y;
+    for(y=0;y<24;y++){//placeholder till we fetch rows to draw from terminal
+        write(STDOUT_FILENO,"~\r\n",3);
+    }
+
 }
+void editorRefresh(){
+    write(STDOUT_FILENO,"\x1b[2J",4);//clear screen fully. keeps the cursor at bottom
+    write(STDOUT_FILENO,"\x1b[H",3);//move cursor to top left
+    editorDrawRows();
+    write(STDOUT_FILENO,"\x1b[H",3);//move cursor to top left
+}
+
+
 /// INPUT
 void editorProcessKey(){
     char c=editorReadKey();
     switch(c){
         case CTRL_KEY(q):
+        write(STDOUT_FILENO,"\x1b[2J",4);
+        write(STDOUT_FILENO,"\x1b[H",3);
         exit(0);
         break;
     }
