@@ -6,6 +6,7 @@
 #include<ctype.h>
 #include<sys/ioctl.h>
 #include<string.h>
+#include<sys/types.h>
 
 /// DEFINES
 #define CTRL_KEY(k) ((k)&(0x1f))
@@ -27,12 +28,14 @@ enum editorKey{
 typedef struct erow{
     int size;
     char* chars;
-} erow;
+} erow;//editor row
 
 struct editorConfig{
     int cx,cy;
     int screenRows;
     int screenCols;
+    int numrows;
+    erow row;
     struct termios orig;
 };
 
@@ -154,7 +157,18 @@ int getWindowSize(int* rows,int* cols){
         return 0;
     }
 }
+///FILE I/O
 
+void editorOpen(){
+    char* line= "Hello,World!";
+    ssize_t linelen=sizeof(line);
+
+    E.row.size=linelen;
+    E.row.chars=malloc(linelen+1);
+    memcpy(E.row.chars,line,linelen);
+    E.row.chars[linelen]='\0';
+    E.numrows=1;
+}
 
 /// APPEND BUFFER
 
@@ -190,6 +204,7 @@ void abFree(struct abuf *ab){
 void editorDrawRows(struct abuf *ab){
     int y;
     for(y=0;y<E.screenRows;y++){
+        if(y>=E.numrows){
         //write(STDOUT_FILENO,"~",3);
         //if(y<E.screenRows-1)write(STDOUT_FILENO,"\r\n",2);
         if(y==E.screenRows/3){
@@ -207,13 +222,19 @@ void editorDrawRows(struct abuf *ab){
         else{
         abAppend(ab, "~",1);
         }
-        abAppend(ab, "\x1b[K",3);
+          }
+        else{
+            int len=E.row.size;
+            if(len>E.screenCols)len=E.screenCols;
+            abAppend(ab,E.row.chars,len);
+        }
+  abAppend(ab, "\x1b[K",3);
         if(y<E.screenRows-1){
             abAppend(ab,"\r\n",2);
         }
+
+
     }
-
-
 }
 
 void editorRefresh(){
@@ -297,6 +318,7 @@ void editorProcessKey(){
 void initEditor(){
     E.cx=0;
     E.cy=0;
+    E.numrows=0;
 if(getWindowSize(&E.screenRows,&E.screenCols)==-1 )die("getWindowSize");
 
 }
@@ -305,6 +327,7 @@ int main(){
 
     enableRawMode();
     initEditor();
+    editorOpen();
 
     while(1){
         editorRefresh();
