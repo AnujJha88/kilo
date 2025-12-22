@@ -5,13 +5,16 @@
 #include<stdio.h>
 #include<ctype.h>
 #include<sys/ioctl.h>
+#include<string.h>
 
 /// DEFINES
 #define CTRL_KEY(k) ((k)&(0x1f))
 
+#define KILO_VERSION "0.0.1"
 /// DATA
 
 struct editorConfig{
+    int cx,cy;
     int screenRows;
     int screenCols;
     struct termios orig;
@@ -101,7 +104,7 @@ struct abuf{
 
 #define ABUF_INIT {NULL,0} // an empty append buffer
 
-void abAppend(struct abuf* ab, int len, const char* s){
+void abAppend(struct abuf* ab,const char* s,int len){
     char* new= realloc(ab->b, ab->len+len);//make sure we have enough space
 
     if(new==NULL) return;
@@ -127,7 +130,22 @@ void editorDrawRows(struct abuf *ab){
     for(y=0;y<E.screenRows;y++){
         //write(STDOUT_FILENO,"~",3);
         //if(y<E.screenRows-1)write(STDOUT_FILENO,"\r\n",2);
+        if(y==E.screenRows/3){
+            char welcome[80];
+            int welcomelen=snprintf(welcome,sizeof(welcome),"Kilo editor --version %s",KILO_VERSION);
+            if (welcomelen>E.screenCols) welcomelen=E.screenCols;
+            int padding=(E.screenCols-welcomelen)/2;
+            if(padding){
+                abAppend(ab,"~",1);
+                padding--;
+            }
+            while(padding--) abAppend(ab," ",1);
+            abAppend(ab,welcome,welcomelen);
+        }
+        else{
         abAppend(ab, "~",1);
+        }
+        abAppend(ab, "\x1b[K",3);
         if(y<E.screenRows-1){
             abAppend(ab,"\r\n",2);
         }
@@ -143,15 +161,18 @@ void editorRefresh(){
     //write(STDOUT_FILENO,"\x1b[H",3);//move cursor to top left
 
     struct abuf ab=ABUF_INIT;
-      abAppend(&ab, "\x1b[?25l", 6);
-    abAppend(&ab, "\x1b[2J",4);
+      abAppend(&ab, "\x1b[?25l", 6);// hide cursor
+//more efficient to clear screen one line at a time
+   //abAppend(&ab, "\x1b[2J", 4);
     abAppend(&ab, "\x1b[H",3);
 
     editorDrawRows(&ab);
 
-    abAppend(&ab, "\x1b[H",3);
+    char buf[32];
+    snprintf(buf,sizeof(buf),"\x1b[%d;%dH",E.cy+1,E.cx+1);//this is ironically not a print to console but it mutates the buffer we give it
+    abAppend(&ab,buf,strlen(buf));
 
-      abAppend(&ab, "\x1b[?25h", 6);
+      abAppend(&ab, "\x1b[?25h", 6);//show cursor
 
     write(STDOUT_FILENO,ab.b,ab.len);
     abFree(&ab);
@@ -161,6 +182,23 @@ void editorRefresh(){
 
 /// INPUT
 
+void editorMoveCursor(char key){
+    switch(key){
+        case 'h':
+        E.cx--;
+        break;
+        case 'j':
+        E.cy++;
+        break;
+        case 'k':
+        E.cy--;
+        break;
+        case 'l':
+        E.cx++;
+        break;
+    }
+}
+
 void editorProcessKey(){
     char c=editorReadKey();
     switch(c){
@@ -169,12 +207,20 @@ void editorProcessKey(){
         write(STDOUT_FILENO,"\x1b[H",3);
         exit(0);
         break;
+        case 'h':
+        case 'j':
+        case 'k':
+        case 'l':
+        editorMoveCursor(c);
+        break;
     }
 }
 
 ///INIT
 
 void initEditor(){
+    E.cx=0;
+    E.cy=0;
 if(getWindowSize(&E.screenRows,&E.screenCols)==-1 )die("getWindowSize");
 
 }
