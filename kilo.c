@@ -300,9 +300,14 @@ void editorRefresh(){
 /// INPUT
 
 void editorMoveCursor(int key){
+    erow* row=(E.cy>=E.numrows)?NULL:&E.row[E.cy];
     switch(key){
         case ARROW_LEFT:
         if(E.cx!=0)E.cx--;
+        else if(E.cy>0){
+            E.cy--;
+            E.cx=E.row[E.cy].size;
+        }
         break;
         case ARROW_DOWN:
         if(E.cy<E.numrows)E.cy++;
@@ -311,8 +316,19 @@ void editorMoveCursor(int key){
         if(E.cy!=0)E.cy--;
         break;
         case ARROW_RIGHT:
-        E.cx++;
+            if(row&&E.cx<row->size)E.cx++;
+            else if(row&&E.cx==row->size){
+                E.cy++;
+                E.cx=0;
+            }
         break;
+    }
+
+    row=(E.cy>=E.numrows)?NULL:&E.row[E.cy];
+
+    int rowlen=row?row->size:0;
+    if(E.cx>rowlen){
+        E.cx=rowlen;
     }
 }
 
