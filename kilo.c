@@ -40,6 +40,7 @@ typedef struct erow{
 
 struct editorConfig{
     int cx,cy;
+    int rx;
     int rowoff;//row offset
     int coloff;
     int screenRows;
@@ -217,6 +218,17 @@ void editorAppendRow(char* s, size_t linelen){
 
 }
 
+int editorRowCxtoRx(erow* row,int cx){
+    int rx=0;
+    int j;
+    for(j=0;j<cx;j++){
+        if(row->chars[j]=='\t')rx+=TAB_STOP-1 -(rx%TAB_STOP);
+        rx++;
+
+    }
+    return rx;
+}
+
 ///FILE I/O
 
 void editorOpen(char* filename){
@@ -264,10 +276,12 @@ void abFree(struct abuf *ab){
 ///OUTPUT
 
 void editorScroll(){
+    E.rx=0;
+    if(E.cy<E.numrows)E.rx=editorRowCxtoRx(&E.row[E.cy],E.cx);
     if(E.cy<E.rowoff)E.rowoff=E.cy;
     if(E.cy>=E.rowoff+E.screenRows)E.rowoff=E.cy-E.screenRows+1;
-    if(E.cx<E.coloff)E.coloff=E.cx;
-    if(E.cx>=E.coloff+E.screenCols)E.coloff=E.cx-E.screenCols+1;
+    if(E.rx<E.coloff)E.coloff=E.rx;
+    if(E.rx>=E.coloff+E.screenCols)E.coloff=E.rx-E.screenCols+1;
 }
 
 
@@ -324,7 +338,7 @@ void editorRefresh(){
     editorDrawRows(&ab);
 
     char buf[32];
-    snprintf(buf,sizeof(buf),"\x1b[%d;%dH",E.cy-E.rowoff+1,E.cx-E.coloff+1);//this is ironically not a print to console but it mutates the buffer we give it
+    snprintf(buf,sizeof(buf),"\x1b[%d;%dH",E.cy-E.rowoff+1,E.rx-E.coloff+1);//this is ironically not a print to console but it mutates the buffer we give it
     abAppend(&ab,buf,strlen(buf));
 
       abAppend(&ab, "\x1b[?25h", 6);//show cursor
@@ -406,6 +420,7 @@ void editorProcessKey(){
 void initEditor(){
     E.cx=0;
     E.cy=0;
+    E.rx=0;
     E.numrows=0;
     E.rowoff=0;
     E.coloff=0;
