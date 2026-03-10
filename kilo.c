@@ -315,12 +315,21 @@ void editorDrawRows(struct abuf *ab){
             abAppend(ab,&E.row[filerow].render[E.coloff],len);
         }
   abAppend(ab, "\x1b[K",3);
-        if(y<E.screenRows-1){
+
             abAppend(ab,"\r\n",2);
-        }
 
 
     }
+}
+
+void editorStatusBar(struct abuf *ab){
+    abAppend(ab,"\x1b[7m",4);
+    int len=0;
+    while (len<E.screenCols){
+        abAppend(ab," ",1);
+        len++;
+    }
+    abAppend(ab,"\x1b[m",3);
 }
 
 void editorRefresh(){
@@ -395,6 +404,11 @@ void editorProcessKey(){
         case PAGE_UP:
         case PAGE_DOWN:
             {
+                if(c==PAGE_UP)E.cy=E.rowoff;
+                else if (c==PAGE_DOWN){
+                    E.cy=E.rowoff+E.screenRows-1;
+                    if (E.cy>E.numrows)E.cy=E.numrows;
+                }
                 int times=E.screenRows;
                 while(times--)editorMoveCursor(c==PAGE_UP?ARROW_UP:ARROW_DOWN);
             }
@@ -410,7 +424,8 @@ void editorProcessKey(){
         E.cx=0;
         break;
         case END_KEY:
-        E.cx=E.screenRows-1;
+        if(E.cy<E.screenRows)
+        E.cx=E.row[E.cy].size;
         break;
     }
 }
@@ -440,6 +455,6 @@ int main(int argc, char* argv[]){
         editorRefresh();
         editorProcessKey();
     }
-
+    E.screenRows -= 1;
     return 0;
 }
